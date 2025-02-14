@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Search, Dna, Loader2, ChevronRight } from "lucide-react";
+import { Search, Dna, Loader2, ChevronRight, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type TFResult = {
   matrix_id: string;
   name: string;
-  family: string;
-  tax_group: string;
+  version: string;
+  collection: string;
+  sequence_logo: string;
+  url: string;
 };
 
 type TopHit = {
@@ -33,6 +35,7 @@ export default function Home() {
   const [topHits, setTopHits] = useState<TopHit[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [sequenceName, setSequenceName] = useState<string>("");
 
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -77,6 +80,17 @@ export default function Home() {
     }
   };
 
+  const handleSequenceChange = (value: string) => {
+    setDnaSequence(value);
+    // Extract sequence name from FASTA header if present
+    if (value.startsWith('>')) {
+      const firstLine = value.split('\n')[0];
+      setSequenceName(firstLine.substring(1).trim());
+    } else {
+      setSequenceName("");
+    }
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -84,73 +98,73 @@ export default function Home() {
         TF Binding Site Scanner
       </h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="tf-search">Search Transcription Factors</Label>
-            <form onSubmit={handleSearch} className="flex gap-2 mt-1">
-              <Input
-                id="tf-search"
-                placeholder="e.g. RUNX"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button type="submit" disabled={isSearching}>
-                {isSearching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-              hmm
-            </form>
-          </div>
-
-          {isSearching ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-gray-200 rounded-lg" />
-                </div>
-              ))}
+      <div className="grid md:grid-cols-2 gap-8">
+        <div>
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div>
+              <Label htmlFor="search">Search Transcription Factors</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="search"
+                  placeholder="Search TFs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Button type="submit" disabled={isSearching}>
+                  {isSearching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
-          ) : (
-            tfList.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="max-h-64 overflow-y-auto">
-                  {tfList.map((tf) => (
-                    <div
-                      key={tf.matrix_id}
-                      className={`p-3 cursor-pointer hover:bg-gray-100 ${
-                        selectedTfId === tf.matrix_id ? "bg-gray-200" : ""
-                      }`}
-                      onClick={() => setSelectedTfId(tf.matrix_id)}
-                    >
-                      <div className="font-medium flex items-center gap-2">
+          </form>
+
+          {tfList.length > 0 && (
+            <div className="mt-4">
+              <div className="border rounded-lg divide-y overflow-auto max-h-[300px]">
+                {tfList.map((tf) => (
+                  <div
+                    key={tf.matrix_id}
+                    className={`p-3 cursor-pointer hover:bg-gray-100 ${
+                      selectedTfId === tf.matrix_id ? "bg-gray-100" : ""
+                    }`}
+                    onClick={() => setSelectedTfId(tf.matrix_id)}
+                  >
+                    <div className="font-medium flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <ChevronRight className="h-4 w-4" />
                         {tf.name}
                       </div>
-                      <div className="text-sm text-gray-600 ml-6">
-                        {tf.matrix_id} - {tf.family}
-                      </div>
+                      {selectedTfId === tf.matrix_id && (
+                        <Check className="size-4" />
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div className="text-sm text-gray-600 ml-6 space-y-1">
+                      <div>{tf.matrix_id} (v{tf.version})</div>
+                      <div className="text-xs text-gray-500">{tf.collection}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )
+            </div>
           )}
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="sequence">DNA Sequence</Label>
+            <Label htmlFor="sequence">DNA Sequence {sequenceName && <span className="text-sm text-gray-500">({sequenceName})</span>}</Label>
             <Textarea
               id="sequence"
-              placeholder="Enter DNA sequence..."
+              placeholder="Enter DNA sequence or FASTA format..."
               value={dnaSequence}
-              onChange={(e) => setDnaSequence(e.target.value)}
-              className="h-32"
+              onChange={(e) => handleSequenceChange(e.target.value)}
+              className="h-32 font-mono"
             />
+            <p className="text-sm text-gray-500 mt-1">
+              Accepts plain sequence or FASTA format (starting with &gt;)
+            </p>
           </div>
           <Button 
             onClick={handleScan}

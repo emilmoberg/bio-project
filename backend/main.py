@@ -1,20 +1,27 @@
-from fastapi import FastAPI, Request
+# main.py
+
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import requests
 import numpy as np
-from Bio.motifs import Motif
 from Bio import motifs
+from Bio.motifs.matrix import FrequencyPositionMatrix
+from Bio.Seq import Seq
 from Bio import SeqIO
 from io import StringIO
 
 app = FastAPI()
 
-# CORS middleware setup
+# Update this list for your actual frontend origins
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -22,31 +29,67 @@ app.add_middleware(
 
 JASPAR_BASE_URL = "http://jaspar.genereg.net/api/v1"
 
+
 @app.get("/api/search_tfs")
 def search_tfs(query: str, page: int = 1, page_size: int = 10):
+    """
+    Search for transcription factors in JASPAR database.
+    Returns paginated results with matrix info and logos.
+    """
     url = f"{JASPAR_BASE_URL}/matrix/?search={query}&page_size={page_size}&page={page}"
     r = requests.get(url)
     if r.status_code != 200:
-        return JSONResponse(status_code=500, content={"error": "JASPAR search failed"})
-    
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "JASPAR search failed"}
+        )
+
     data = r.json()
     results = data.get("results", [])
-    simplified = [{
-        "matrix_id": item.get("matrix_id"),
-        "name": item.get("name"),
-        "family": item.get("family"),
-        "tax_group": item.get("tax_group"),
-    } for item in results]
+    
+    simplified = []
+    for item in results:
+        simplified.append({
+            "matrix_id": item.get("matrix_id"),
+            "name": item.get("name"),
+            "version": item.get("version"),
+            "collection": item.get("collection"),
+            "sequence_logo": item.get("sequence_logo"),
+            "url": item.get("url")
+        })
 
     return {
         "count": data.get("count", 0),
-        "page": page,
-        "page_size": page_size,
+        "next": data.get("next"),
+        "previous": data.get("previous"),
         "results": simplified
     }
 
+
 @app.post("/api/scan")
 def scan_sequence(payload: dict):
+    """
+    Expects JSON:
+    {
+      "sequence": "ACGTACGTACGT...",
+      "tf_id": "MA0002.1"
+    }
+
+    Example data from JASPAR for MA0002.1 (RUNX1) now looks like:
+    {
+      'matrix_id': 'MA0002.1',
+      'name': 'RUNX1',
+      ...
+      'pfm': {
+         'A': [10.0, 12.0, 4.0, ...],
+         'C': [...],
+         'G': [...],
+         'T': [...]
+       }
+    }
+
+    We'll parse that properly and scan the user-supplied sequence.
+    """
     raw_input = payload.get("sequence", "")
     tf_id = payload.get("tf_id", "")
     
@@ -57,92 +100,91 @@ def scan_sequence(payload: dict):
         )
 
     # Parse FASTA if it starts with '>'
+    sequence_name = None
     if raw_input.startswith('>'):
-        fasta = StringIO(raw_input)
         try:
-            sequence = str(next(SeqIO.parse(fasta, 'fasta')).seq)
-        except:
+            fasta = StringIO(raw_input)
+            record = next(SeqIO.parse(fasta, 'fasta'))
+            sequence = str(record.seq)
+            sequence_name = record.id or record.description
+        except StopIteration:
             return JSONResponse(
                 status_code=400,
-                content={"error": "Invalid FASTA format"}
+                content={"error": "Empty FASTA sequence"}
+            )
+        except Exception as e:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Invalid FASTA format: {str(e)}"}
             )
     else:
         sequence = raw_input.strip()
 
-    # Fetch PFM from JASPAR
+    # Validate sequence
+    sequence = sequence.upper()
+    if not sequence:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Empty sequence"}
+        )
+    
+    if not all(c in 'ACGT' for c in sequence):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid DNA sequence. Only ACGT allowed."}
+        )
+
+    # Fetch the TF info from JASPAR
     url = f"{JASPAR_BASE_URL}/matrix/{tf_id}"
     r = requests.get(url)
     if r.status_code != 200:
         return JSONResponse(
-            status_code=500, 
-            content={"error": "Failed to retrieve TF from JASPAR"}
+            status_code=500,
+            content={"error": f"Failed to retrieve TF {tf_id} from JASPAR"}
         )
 
     data = r.json()
-    pfm = data.get("pfm", {}).get("pfm", None)
-    if not pfm:
-        return JSONResponse(
-            status_code=400, 
-            content={"error": "No PFM data found for TF"}
-        )
 
-    # Process PFM data
-    pfm_array = np.array(pfm)
-    pfm_array_T = pfm_array.T
+    print(data)
 
-    motif_counts = {
-        "A": pfm_array_T[0].tolist(),
-        "C": pfm_array_T[1].tolist(),
-        "G": pfm_array_T[2].tolist(),
-        "T": pfm_array_T[3].tolist(),
+    # data["pfm"] is now a dict with keys "A", "C", "G", "T", each an array of counts
+    pfm_dict = data.get("pfm")
+    if not pfm_dict:
+        return JSONResponse(status_code=400, content={"error": "No PFM data found."})
+
+    # Construct Biopython motif    
+    fpm = FrequencyPositionMatrix("ACGT", pfm_dict)
+    pwm = fpm.normalize(pseudocounts=0.1)
+    pssm = pwm.log_odds()
+    
+    # Determine the motif length (all nucleotide lists in pfm_dict are assumed to be the same length).
+    motif_length = len(pfm_dict["A"])  # integer representing motif length
+    positions = []    # List[int]: will hold the starting index of each window.
+    scores_list = []  # List[float]: will hold the computed score for each window.
+    
+    print("motif_length", motif_length)
+
+    # Iterate over every possible window in the sequence where the motif can fit.
+    for i in range(len(sequence) - motif_length + 1):
+        window = sequence[i : i + motif_length]  # Extract a window of length equal to motif_length.
+        # Compute the score using the PSSM.
+        # pssm.calculate() computes the log-odds score for the window.
+        score = pssm.calculate(window)
+        positions.append(i)
+        scores_list.append(float(score))
+        print("i", i, "window", window, "score", score)
+    
+    print("scores_list", scores_list)
+    print("positions", positions)
+    
+    return {
+        "name": sequence_name,
+        "sequence": sequence,
+        "scores": scores_list,
+        "positions": positions,
+        "topHits": []
     }
 
-    # Create and normalize motif
-    motif_obj = motifs.Motif(alphabet="ACGT")
-    motif_obj.counts = motif_counts
-    pwm = motif_obj.counts.normalize(pseudocounts=0.8)
 
-    # Scan sequence
-    window_size = motif_obj.length
-    scores = []
-    
-    def score_subseq(subseq):
-        score = 0.0
-        for i, base in enumerate(subseq):
-            if base in pwm:
-                p = pwm[base][i]
-                score += np.log2(p if p > 0 else 1e-9)
-            else:
-                score += -9999
-        return score
-
-    for i in range(len(sequence) - window_size + 1):
-        subseq = sequence[i : i + window_size]
-        score = score_subseq(subseq)
-        scores.append(score)
-
-    if not scores:
-        return {
-            "scores": [],
-            "positions": [],
-            "topHits": []
-        }
-
-    # Calculate top hits
-    max_score = max(scores)
-    threshold = 0.8 * max_score
-    top_hits = [
-        {
-            "start": i,
-            "end": i + window_size,
-            "score": sc
-        }
-        for i, sc in enumerate(scores)
-        if sc >= threshold
-    ]
-
-    return {
-        "scores": scores,
-        "positions": list(range(len(scores))),
-        "topHits": top_hits
-    } 
+# Run with:
+#   uvicorn main:app --reload
