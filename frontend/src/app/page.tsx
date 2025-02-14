@@ -9,6 +9,19 @@ import { Label } from "@/components/ui/label";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Search, Dna, Loader2, ChevronRight, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
 
 type TFResult = {
   matrix_id: string;
@@ -91,6 +104,10 @@ export default function Home() {
     }
   };
 
+  const chartConfig = {
+
+  } satisfies ChartConfig
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -102,7 +119,7 @@ export default function Home() {
         <div>
           <form onSubmit={handleSearch} className="space-y-4">
             <div>
-              <Label htmlFor="search">Search Transcription Factors</Label>
+              <Label htmlFor="search">Search and Select Transcription Factors</Label>
               <div className="flex gap-2">
                 <Input
                   id="search"
@@ -182,18 +199,40 @@ export default function Home() {
       </div>
 
       {scores.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Binding Score Profile</h2>
-          <div className="border rounded-lg p-4 bg-white">
-            <LineChart width={800} height={300} data={scores}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="position" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="score" stroke="#4f46e5" />
-            </LineChart>
-          </div>
-        </div>
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Binding Score Profile</CardTitle>
+            <CardDescription>
+              Position-specific binding scores along the sequence
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="max-h-96 w-full">
+              <LineChart
+                data={scores}
+                margin={{ left: 12, right: 12 }}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="position"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <ChartTooltip
+                  cursor={true}
+                  content={<ChartTooltipContent/>}
+                />
+                <Line
+                  dataKey="score"
+                  type="monotone"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       )}
 
       {topHits.length > 0 && (
