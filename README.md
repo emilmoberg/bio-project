@@ -4,7 +4,7 @@ A web-based tool for scanning DNA sequences to identify potential transcription 
 
 ## Usage
 1. **Search for and Select Transcription Factors**
-   - Enter a transcription factor name (e.g., "GATA1", "p53")
+   - Enter a transcription factor name (e.g., "GATA1", "RUNX1")
    - Browse through matching factors from JASPAR database
    - Select a transcription factor to scan for
 
@@ -71,14 +71,10 @@ python -m venv venv
 
 # Activate virtual environment
 # On Windows:
-cd venv
-Scripts\activate.bat
-cd ..
+venv\Scripts\activate.bat
 
 # On macOS/Linux:
-cd venv
-source bin/activate
-cd ..
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -112,8 +108,3 @@ npm run dev
 The application will be available at:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
-
-## API Documentation
-Once running, API documentation is available at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
