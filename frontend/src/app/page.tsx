@@ -88,7 +88,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Error scanning sequence",
-        description: err.response?.data?.error || "Failed to scan DNA sequence"
+        description: err.response?.data?.error || "Failed to scan nucleotide sequence"
       });
     } finally {
       setIsScanning(false);
@@ -173,10 +173,10 @@ export default function Home() {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="sequence">DNA Sequence {sequenceName && <span className="text-sm text-gray-500">({sequenceName})</span>}</Label>
+            <Label htmlFor="sequence">Nucleotide Sequence {sequenceName && <span className="text-sm text-gray-500">({sequenceName})</span>}</Label>
             <Textarea
               id="sequence"
-              placeholder="Enter DNA sequence or FASTA format..."
+              placeholder="Enter nucleotide sequence or FASTA format..."
               value={dnaSequence}
               onChange={(e) => handleSequenceChange(e.target.value)}
               className="h-32 font-mono"
@@ -197,6 +197,8 @@ export default function Home() {
             )}
             {isScanning ? "Scanning..." : "Scan Sequence"}
           </Button>
+          <p className="text-sm text-gray-500 text-center w-full">Selected TF: {tfList.find(tf => tf.matrix_id === selectedTfId)?.name || "None"}</p>
+
         </div>
       </div>
 
@@ -255,7 +257,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      ) : (
+      ) : scores.length > 0 && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold mb-2">No good binding sites found</h2>
         </div>
