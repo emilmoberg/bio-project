@@ -131,7 +131,7 @@ def scan_sequence(payload: dict):
     if not all(c in 'ACGT' for c in sequence):
         return JSONResponse(
             status_code=400,
-            content={"error": "Invalid DNA sequence. Only ACGT allowed."}
+            content={"error": "Invalid sequence. Only ACGT allowed."}
         )
 
     # Fetch the TF info from JASPAR
