@@ -35,6 +35,7 @@ A web-based tool for scanning DNA sequences to identify potential transcription 
 - Python 3.8 or higher
 - Node.js 18 or higher
 - npm (comes with Node.js)
+- venv (can be installed via `pip install virtualenv`)
 
 ## Project Structure
 ```bash
@@ -63,6 +64,9 @@ python run.py
 
 #### Backend Setup
 ```bash
+# Install virtualenv if you don't have it
+pip install virtualenv
+
 # Navigate to backend directory
 cd backend
 
@@ -71,7 +75,7 @@ python -m venv venv
 
 # Activate virtual environment
 # On Windows:
-venv\Scripts\activate.bat
+venv\Scripts\activate
 
 # On macOS/Linux:
 source venv/bin/activate
