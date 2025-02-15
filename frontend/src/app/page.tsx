@@ -36,6 +36,7 @@ type TopHit = {
   start: number;
   end: number;
   score: number;
+  sequence: string;
 };
 
 export default function Home() {
@@ -82,6 +83,7 @@ export default function Home() {
         score: s
       })));
       setTopHits(topHits);
+      console.log(res.data)
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -219,15 +221,21 @@ export default function Home() {
                   axisLine={false}
                   tickMargin={8}
                 />
-                <ChartTooltip
-                  cursor={true}
-                  content={<ChartTooltipContent/>}
+                <YAxis
+                  tickFormatter={(value) => value.toFixed(2)}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                 />
                 <Line
                   dataKey="score"
                   type="monotone"
                   strokeWidth={2}
-                  dot={false}
+                  dot={true}
+                />
+                <ChartTooltip
+                  cursor={true}
+                  content={<ChartTooltipContent/>}
                 />
               </LineChart>
             </ChartContainer>
@@ -235,16 +243,21 @@ export default function Home() {
         </Card>
       )}
 
-      {topHits.length > 0 && (
+      {topHits.length > 0 ? (
         <div className="mt-6">
           <h2 className="text-xl font-semibold mb-2">Top Binding Sites</h2>
           <div className="space-y-2">
             {topHits.map((hit, i) => (
               <div key={i} className="p-3 bg-gray-50 rounded-lg">
-                Position {hit.start}-{hit.end}: Score {hit.score.toFixed(2)}
+                <div>Position {hit.start}-{hit.end}: Score {hit.score.toFixed(2)}</div>
+                <div className="text-xs text-gray-500">Sequence: {hit.sequence}</div>
               </div>
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold mb-2">No good binding sites found</h2>
         </div>
       )}
     </div>

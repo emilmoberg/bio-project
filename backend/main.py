@@ -176,13 +176,27 @@ def scan_sequence(payload: dict):
     
     print("scores_list", scores_list)
     print("positions", positions)
+
+    # Find top hits (scores above 0)
+    hits = []
+    for pos, score in zip(positions, scores_list):
+        if score > 0:  # Only include positive scores
+            hits.append({
+                "start": pos,
+                "end": pos + motif_length,
+                "score": round(score, 3),  # Round to 3 decimal places for cleaner output
+                "sequence": sequence[pos:pos + motif_length]
+            })
+    
+    # Sort hits by score in descending order
+    top_hits = sorted(hits, key=lambda x: x["score"], reverse=True)
     
     return {
         "name": sequence_name,
         "sequence": sequence,
         "scores": scores_list,
         "positions": positions,
-        "topHits": []
+        "topHits": top_hits
     }
 
 
