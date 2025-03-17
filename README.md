@@ -26,7 +26,7 @@ A web-based tool for scanning DNA sequences to identify potential transcription 
 - NumPy for numerical computations
 
 ### APIs & Data Sources
-- JASPAR API (http://jaspar.genereg.net/api)
+- JASPAR API (https://jaspar.elixir.no/api/)
   - Provides transcription factor binding profiles
   - Position frequency matrices (PFMs)
 

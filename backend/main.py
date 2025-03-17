@@ -27,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-JASPAR_BASE_URL = "http://jaspar.genereg.net/api/v1"
+JASPAR_BASE_URL = "https://jaspar.elixir.no/api/v1"
 
 
 @app.get("/api/search_tfs")
