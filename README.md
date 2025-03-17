@@ -8,7 +8,7 @@ A web-based tool for scanning DNA sequences to identify potential transcription 
    - Browse through matching factors from JASPAR database
    - Select a transcription factor to scan for
 
-2. **Analyze Nucleotide Sequences**
+2. **Analyze DNA Sequences**
    - Input your nucleotide sequence in the text area (plain text or FASTA format)
    - View results showing potential binding sites and scores
 

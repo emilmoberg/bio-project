@@ -88,7 +88,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Error scanning sequence",
-        description: err.response?.data?.error || "Failed to scan nucleotide sequence"
+        description: err.response?.data?.error || "Failed to scan DNA sequence"
       });
     } finally {
       setIsScanning(false);
@@ -107,7 +107,12 @@ export default function Home() {
   };
 
   const chartConfig = {
-
+    score: {
+      label: "Score",
+    },
+    position: {
+      label: "Position",
+    }
   } satisfies ChartConfig
 
   return (
@@ -125,7 +130,7 @@ export default function Home() {
               <div className="flex gap-2">
                 <Input
                   id="search"
-                  placeholder="Search TFs..."
+                  placeholder="Enter TF name or matrix ID (e.g. MA0079.5)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -137,35 +142,56 @@ export default function Home() {
                   )}
                 </Button>
               </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Search by name (e.g. "SP1") or JASPAR matrix ID (e.g. "MA0079.5").<br/> Matrix IDs are recommended as the search by name functionality is not optimized in this version of the tool.
+              </p>
             </div>
           </form>
 
           {tfList.length > 0 && (
             <div className="mt-4">
               <div className="border rounded-lg divide-y overflow-auto max-h-[300px]">
-                {tfList.map((tf) => (
-                  <div
-                    key={tf.matrix_id}
-                    className={`p-3 cursor-pointer hover:bg-gray-100 ${
-                      selectedTfId === tf.matrix_id ? "bg-gray-100" : ""
-                    }`}
-                    onClick={() => setSelectedTfId(tf.matrix_id)}
-                  >
-                    <div className="font-medium flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ChevronRight className="h-4 w-4" />
-                        {tf.name}
+                {tfList.map((tf) => {
+                  // Determine match type for styling
+                  const isExactMatch = tf.name.toUpperCase() === searchQuery.trim().toUpperCase();
+                  const isPrefixMatch = tf.name.toUpperCase().startsWith(searchQuery.trim().toUpperCase());
+                  
+                  return (
+                    <div
+                      key={tf.matrix_id}
+                      className={`p-3 cursor-pointer hover:bg-gray-100 ${
+                        selectedTfId === tf.matrix_id ? "bg-gray-100" : ""
+                      }`}
+                      onClick={() => setSelectedTfId(tf.matrix_id)}
+                    >
+                      <div className="font-medium flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className="h-4 w-4" />
+                          <span className="flex items-center gap-2">
+                            {tf.name}
+                            {isExactMatch && (
+                              <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                                Exact Match
+                              </span>
+                            )}
+                            {!isExactMatch && isPrefixMatch && (
+                              <span className="px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 rounded">
+                                Prefix Match
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        {selectedTfId === tf.matrix_id && (
+                          <Check className="size-4" />
+                        )}
                       </div>
-                      {selectedTfId === tf.matrix_id && (
-                        <Check className="size-4" />
-                      )}
+                      <div className="text-sm text-gray-600 ml-6 space-y-1">
+                        <div>{tf.matrix_id} (v{tf.version})</div>
+                        <div className="text-xs text-gray-500">{tf.collection}</div>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600 ml-6 space-y-1">
-                      <div>{tf.matrix_id} (v{tf.version})</div>
-                      <div className="text-xs text-gray-500">{tf.collection}</div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -173,10 +199,10 @@ export default function Home() {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="sequence">Nucleotide Sequence {sequenceName && <span className="text-sm text-gray-500">({sequenceName})</span>}</Label>
+            <Label htmlFor="sequence">DNA Sequence {sequenceName && <span className="text-sm text-gray-500">({sequenceName})</span>}</Label>
             <Textarea
               id="sequence"
-              placeholder="Enter nucleotide sequence or FASTA format..."
+              placeholder="Enter DNA sequence or FASTA format..."
               value={dnaSequence}
               onChange={(e) => handleSequenceChange(e.target.value)}
               className="h-32 font-mono"
@@ -222,22 +248,32 @@ export default function Home() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
+                  tickFormatter={(value) => value.toString()}
                 />
                 <YAxis
                   tickFormatter={(value) => value.toFixed(2)}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
+                  dataKey="score"
                 />
                 <Line
                   dataKey="score"
                   type="monotone"
                   strokeWidth={2}
-                  dot={true}
+                  dot={false}
                 />
                 <ChartTooltip
                   cursor={true}
-                  content={<ChartTooltipContent/>}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="bg-white p-2 border rounded shadow">
+                        <div className="font-bold">Position: {payload[0]?.payload.position}</div>
+                        <div>Score: {(payload[0]?.value as number).toFixed(2)}</div>
+                      </div>
+                    );
+                  }}
                 />
               </LineChart>
             </ChartContainer>

@@ -35,8 +35,39 @@ def search_tfs(query: str, page: int = 1, page_size: int = 10):
     """
     Search for transcription factors in JASPAR database.
     Returns paginated results with matrix info and logos.
+    Handles both matrix ID searches (e.g. MA0079.1) and name searches.
     """
-    url = f"{JASPAR_BASE_URL}/matrix/?search={query}&page_size={page_size}&page={page}"
+    # Check if query matches matrix ID format (e.g. MA0079.1)
+    is_matrix_id = bool(query.strip().upper().startswith('MA') and '.' in query)
+    
+    # Construct search URL based on query type
+    if is_matrix_id:
+        # For matrix IDs, use exact match endpoint
+        url = f"{JASPAR_BASE_URL}/matrix/{query.strip()}"
+        r = requests.get(url)
+        if r.status_code == 200:
+            # If found, return as single result
+            item = r.json()
+            return {
+                "count": 1,
+                "next": None,
+                "previous": None,
+                "results": [{
+                    "matrix_id": item.get("matrix_id"),
+                    "name": item.get("name"),
+                    "version": item.get("version"),
+                    "collection": item.get("collection"),
+                    "sequence_logo": item.get("sequence_logo"),
+                    "url": item.get("url")
+                }]
+            }
+        elif r.status_code == 404:
+            # If not found, try regular search as fallback
+            url = f"{JASPAR_BASE_URL}/matrix/?search={query}&page_size={page_size}&page={page}"
+    else:
+        # For name searches, use regular search endpoint
+        url = f"{JASPAR_BASE_URL}/matrix/?search={query}&page_size={page_size}&page={page}"
+    
     r = requests.get(url)
     if r.status_code != 200:
         return JSONResponse(
