@@ -11,6 +11,9 @@ A web-based tool for scanning DNA sequences to identify potential transcription 
 2. **Analyze DNA Sequences**
    - Input your nucleotide sequence in the text area (plain text or FASTA format)
    - View results showing potential binding sites and scores
+  
+### Video Demonstration
+https://youtu.be/LrVzvFMzhgo
 
 ## Tech Stack
 
